@@ -1,13 +1,17 @@
 ﻿using BasicTextFile;
+using CVSWithLibary;
 
 var textFile = new SimpleTextFile("data.txt");
 var lines = textFile.ReadLines();
 string usuarioActual = "";
 
+var helper = new CsvHelperExample();
+var readPeople = helper.Read("people.csv").ToList();
+
 using (var logger = new LogWriter("log.txt"))
 {
     var opc = "0";
-    logger.WriteLog("INFO", "Application started.");
+    logger.WriteLog("INFO", "Aplicación iniciada.");
 
     do
     {
@@ -16,78 +20,209 @@ using (var logger = new LogWriter("log.txt"))
         switch (opc)
         {
             case "1":
-                logger.WriteLog("INFO", usuarioActual + " - Show content.");
-                if (lines.Length == 0)
+                logger.WriteLog("INFO", usuarioActual + " - Mostrar contenido.");
+                if (readPeople.Count == 0)
                 {
-                    Console.WriteLine("Empty file.");
-                    logger.WriteLog("ERROR", usuarioActual + " - Empty file.");
+                    Console.WriteLine("Archivo vacío.");
+                    logger.WriteLog("ERROR", usuarioActual + " - Archivo vacío.");
                     break;
                 }
-                foreach (var line in lines)
+                foreach (var person in readPeople)
                 {
-                    Console.WriteLine(line);
+                    Console.WriteLine(person);
                 }
                 break;
 
             case "2":
-                logger.WriteLog("INFO", usuarioActual + " - Add line.");
-                Console.Write("Enter the line to add: ");
-                var newLine = Console.ReadLine();
-                if (!string.IsNullOrEmpty(newLine))
+                logger.WriteLog("INFO", usuarioActual + " - Agregar línea.");
+
+                int id;
+                do
                 {
-                    lines = lines.Append(newLine).ToArray();
-                }
+                    Console.Write("Ingrese el ID (numérico y único): ");
+                } while (!int.TryParse(Console.ReadLine(), out id) || readPeople.Any(p => p.Id == id));
+
+                string firstName;
+                do
+                {
+                    Console.Write("Ingrese el nombre: ");
+                    firstName = Console.ReadLine() ?? "";
+                } while (string.IsNullOrWhiteSpace(firstName));
+
+                string lastName;
+                do
+                {
+                    Console.Write("Ingrese el apellido: ");
+                    lastName = Console.ReadLine() ?? "";
+                } while (string.IsNullOrWhiteSpace(lastName));
+
+                string phone;
+                do
+                {
+                    Console.Write("Ingrese el teléfono: ");
+                    phone = Console.ReadLine() ?? "";
+                } while (!System.Text.RegularExpressions.Regex.IsMatch(phone, @"^\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}$"));
+
+                Console.Write("Ingrese la ciudad: ");
+                var city = Console.ReadLine() ?? "";
+
+                decimal balance;
+                do
+                {
+                    Console.Write("Ingrese el saldo (número positivo): ");
+                } while (!decimal.TryParse(Console.ReadLine(), out balance) || balance < 0);
+
+                var newPerson = new Person
+                {
+                    Id = id,
+                    FirstName = firstName,
+                    LastName = lastName,
+                    Phone = phone,
+                    City = city,
+                    Balance = balance
+                };
+
+                readPeople.Add(newPerson);
                 break;
 
             case "3":
-                logger.WriteLog("INFO", usuarioActual + " - Update line.");
-                Console.Write("Enter the line to update: ");
-                var lineToUpdate = Console.ReadLine();
-                Console.Write("Enter the new value: ");
-                var newValue = Console.ReadLine();
-                for (int i = 0; i < lines.Length; i++)
+                logger.WriteLog("INFO", usuarioActual + " - Editar persona.");
+
+                Console.Write("Ingrese el ID de la persona a editar: ");
+                string inputId = Console.ReadLine() ?? "";
+                if (!int.TryParse(inputId, out int editId))
                 {
-                    if (lines[i] == lineToUpdate)
-                    {
-                        lines[i] = newValue!;
-                        break;
-                    }
+                    Console.WriteLine("ID no válido.");
+                    break;
                 }
+
+                var personToEdit = readPeople.FirstOrDefault(p => p.Id == editId);
+                if (personToEdit == null)
+                {
+                    Console.WriteLine("Persona no encontrada.");
+                    break;
+                }
+
+                Console.WriteLine($"Editando a: {personToEdit.FirstName} {personToEdit.LastName}");
+
+                Console.Write($"Nombre ({personToEdit.FirstName}): ");
+                var newFirstName = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(newFirstName))
+                    personToEdit.FirstName = newFirstName;
+
+                Console.Write($"Apellido ({personToEdit.LastName}): ");
+                var newLastName = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(newLastName))
+                    personToEdit.LastName = newLastName;
+
+                string newPhone;
+                do
+                {
+                    Console.Write($"Teléfono ({personToEdit.Phone}): ");
+                    newPhone = Console.ReadLine() ?? "";
+                    if (string.IsNullOrWhiteSpace(newPhone))
+                        break;
+                } while (!System.Text.RegularExpressions.Regex.IsMatch(newPhone, @"^\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}$"));
+                if (!string.IsNullOrWhiteSpace(newPhone))
+                    personToEdit.Phone = newPhone;
+
+                Console.Write($"Ciudad ({personToEdit.City}): ");
+                var newCity = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(newCity))
+                    personToEdit.City = newCity;
+
+                string newBalanceStr;
+                decimal tempBalance = 0;
+                do
+                {
+                    Console.Write($"Saldo ({personToEdit.Balance}): ");
+                    newBalanceStr = Console.ReadLine() ?? "";
+                    if (string.IsNullOrWhiteSpace(newBalanceStr))
+                        break;
+                } while (!decimal.TryParse(newBalanceStr, out tempBalance) || tempBalance < 0);
+
+                if (!string.IsNullOrWhiteSpace(newBalanceStr))
+                    personToEdit.Balance = tempBalance;
+
+                Console.WriteLine("Persona actualizada exitosamente.");
                 break;
 
             case "4":
-                logger.WriteLog("INFO", usuarioActual + " - Remove line.");
-                Console.Write("Enter the line to remove: ");
-                var lineToRemove = Console.ReadLine();
-                if (!string.IsNullOrEmpty(lineToRemove))
+                logger.WriteLog("INFO", usuarioActual + " - Eliminar persona.");
+
+                Console.Write("Ingrese el ID de la persona a eliminar: ");
+                string deleteIdInput = Console.ReadLine() ?? "";
+                if (!int.TryParse(deleteIdInput, out int deleteId))
                 {
-                    lines = lines.Where(line => line != lineToRemove).ToArray();
+                    Console.WriteLine("ID no válido.");
+                    break;
+                }
+
+                var personToDelete = readPeople.FirstOrDefault(p => p.Id == deleteId);
+                if (personToDelete == null)
+                {
+                    Console.WriteLine("Persona no encontrada.");
+                    break;
+                }
+
+                Console.WriteLine("Datos de la persona:");
+                Console.WriteLine($"ID: {personToDelete.Id}");
+                Console.WriteLine($"Nombre: {personToDelete.FirstName} {personToDelete.LastName}");
+                Console.WriteLine($"Teléfono: {personToDelete.Phone}");
+                Console.WriteLine($"Ciudad: {personToDelete.City}");
+                Console.WriteLine($"Saldo: {personToDelete.Balance}");
+
+                Console.Write("¿Está seguro que desea eliminar esta persona? (s/n): ");
+                var confirm = Console.ReadLine()?.Trim().ToLower();
+
+                if (confirm == "s")
+                {
+                    readPeople.Remove(personToDelete);
+                    Console.WriteLine("Persona eliminada exitosamente.");
+                    logger.WriteLog("INFO", usuarioActual + $" - Persona con ID {deleteId} eliminada.");
+                }
+                else
+                {
+                    Console.WriteLine("Eliminación cancelada.");
+                    logger.WriteLog("INFO", usuarioActual + $" - Canceló la eliminación de ID {deleteId}.");
                 }
                 break;
 
             case "5":
-                SaveChanges();
-                logger.WriteLog("INFO", "Save file.");
+                logger.WriteLog("INFO", usuarioActual + $" - Guardado el archivo.");
+                using (var writer = new StreamWriter("people.csv"))
+                using (var csv = new CsvHelper.CsvWriter(writer, System.Globalization.CultureInfo.InvariantCulture))
+                {
+                    csv.WriteHeader<Person>();
+                    csv.NextRecord();
+                    foreach (var person in readPeople)
+                    {
+                        csv.WriteRecord(person);
+                        csv.NextRecord();
+                    }
+                }
+                Console.WriteLine("Personas guardadas en el archivo CSV.");
+                logger.WriteLog("INFO", "Archivo guardado.");
                 break;
 
             case "0":
-                Console.WriteLine("Exiting...");
+                Console.WriteLine("Saliendo...");
                 break;
 
             default:
-                Console.WriteLine("Invalid option. Please try again.");
+                Console.WriteLine("Opción no válida. Intente nuevamente.");
                 break;
         }
     } while (opc != "0");
-    logger.WriteLog("INFO", "Application ended.");
-    SaveChanges();
+    logger.WriteLog("INFO", "Aplicación finalizada.");
+    GuardarCambios();
 }
 
-void SaveChanges()
+void GuardarCambios()
 {
-    Console.WriteLine("Saving changes...");
+    Console.WriteLine("Guardando cambios...");
     textFile.WriteLines(lines);
-    Console.WriteLine("Changes saved.");
+    Console.WriteLine("Cambios guardados.");
 }
 
 string Menu()
@@ -98,7 +233,7 @@ string Menu()
 
     while (!autenticado && intentos < 3)
     {
-        Console.WriteLine("=======================================");
+        Console.WriteLine("\n=======================================");
         Console.Write("Ingrese el nombre de usuario: ");
         string? usuarioIngresado = Console.ReadLine();
 
@@ -132,6 +267,7 @@ string Menu()
                 {
                     autenticado = true;
                     usuarioActual = usuarioArchivo;
+                    Console.WriteLine("");
                     Console.WriteLine($"Bienvenido, {usuarioActual}.");
                     break;
                 }
@@ -169,10 +305,13 @@ string Menu()
         }
     }
 
+    Console.WriteLine("");
     Console.WriteLine("=======================================");
     Console.WriteLine("1. Mostrar contenido");
     Console.WriteLine("2. Agregar persona");
-    Console.WriteLine("3. Guardar cambios");
+    Console.WriteLine("3. Editar Persona");
+    Console.WriteLine("4. Borrar Persona");
+    Console.WriteLine("5. Guardar cambios");
     Console.WriteLine("0. Salir");
     Console.Write("Seleccione una opción: ");
     return Console.ReadLine() ?? "0";
